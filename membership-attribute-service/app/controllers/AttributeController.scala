@@ -1,5 +1,6 @@
 package controllers
 
+import com.gu.membership.model.{CardUpdateFailure, CardUpdateSuccess}
 import configuration.Config
 import models.ApiError._
 import models.ApiErrors._
@@ -18,7 +19,8 @@ import models.AccountDetails._
 import scala.concurrent.Future
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
-import play.api.mvc.Results.Ok
+import play.api.mvc.Results.{Ok, Forbidden}
+import json.PaymentCardUpdateResultWriters._
 
 class AttributeController {
   
@@ -68,32 +70,22 @@ class AttributeController {
       sfUser <- OptionT(tp.contactRepo.get(user))
       subscription <- OptionT(tp.subService.findByProductFamily(sfUser, productFamily))
       stripeCardToken <- OptionT(Future.successful(updateForm.bindFromRequest().value))
-      _ <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
-      pmNow <- OptionT(tp.subService.getPaymentCardByAccount(subscription.accountId))
-    } yield Ok(Json.obj("last4" -> pmNow.lastFourDigits, "cardType" -> pmNow.cardType, "type" -> pmNow.cardType)))
-      .run.map(_.getOrElse(notFound))
+      updateResult <- OptionT(tp.subService.setPaymentCardWithStripeToken(subscription.accountId, stripeCardToken))
+    } yield updateResult match {
+      case success: CardUpdateSuccess => Forbidden(Json.toJson(success))
+      case failure: CardUpdateFailure => Forbidden(Json.toJson(failure))
+    }).run.map(_.getOrElse(notFound))
   }
 
   def membershipDetails = paymentDetails(Membership)
   def digitalPackDetails = paymentDetails(DigitalPack)
 
   def paymentDetails(product: ProductFamilyName) = mmaAction.async { implicit request =>
-
-    val notSubscribed = Ok(Json.obj("msg" -> "not subscribed"))
     val productFamily = request.touchpoint.ratePlanIds(product)
-
-    authenticationService.userId.fold[Future[Result]](Future(cookiesRequired)){ userId =>
-      request.touchpoint.contactRepo.get(userId) flatMap { optContact =>
-        optContact.fold[Future[Result]](Future(notSubscribed)) { contact =>
-          request.touchpoint.paymentService.paymentDetails(contact, productFamily).map { details =>
-            details.fold(notSubscribed) { paymentDetails =>
-              (contact, paymentDetails).toResult
-            }
-          }
-        }
-      }
-    }.recover {
-      case e:IllegalStateException => notSubscribed
-    }
+    (for {
+      user <- OptionT(Future.successful(authenticationService.userId))
+      contact <- OptionT(request.touchpoint.contactRepo.get(user))
+      details <- OptionT(request.touchpoint.paymentService.paymentDetails(contact, productFamily))
+    } yield (contact, details).toResult).run.map(_ getOrElse Ok(Json.obj()))
   }
 }
