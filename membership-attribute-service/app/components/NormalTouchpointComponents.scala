@@ -1,6 +1,7 @@
 package components
 import configuration.Config
-import play.libs.Akka.system
-import play.api.Play.current
+import framework.AllComponentTraits
 
-object NormalTouchpointComponents extends TouchpointComponents(Config.defaultTouchpointBackendStage)(system)
+class NormalTouchpointComponents(components: AllComponentTraits) extends TouchpointComponents(components) {
+  override lazy val stage = Config.defaultTouchpointBackendStage
+}

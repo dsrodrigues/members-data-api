@@ -1,20 +1,22 @@
 package controllers
 
-import actions.BackendFromSalesforceAction
+import configuration.SalesforceOrganisationId
 import models.ApiErrors
 import monitoring.CloudWatch
 import parsers.Salesforce.{MembershipDeletion, MembershipUpdate, OrgIdMatchingError, ParsingError}
 import parsers.{Salesforce => SFParser}
 import play.Logger
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.mvc.Action
 import play.api.mvc.BodyParsers.parse
 import play.api.mvc.Results.Ok
+import services.AttributeService
 
 import scala.Function.const
 import scala.concurrent.Future
 import scalaz.{-\/, \/-}
 
-class SalesforceHookController {
+class SalesforceHookController(attrService: AttributeService, sfOrganisationId: SalesforceOrganisationId) {
   val metrics = CloudWatch("SalesforceHookController")
 
   private val ack = Ok(
@@ -27,11 +29,10 @@ class SalesforceHookController {
     </soapenv:Envelope>
   )
 
-  def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
-    val validOrgId = request.touchpoint.sfOrganisationId
-    val attributeService = request.touchpoint.attrService
+  def createAttributes = Action.async(parse.xml) { request =>
+    val attributeService = attrService
 
-    SFParser.parseOutboundMessage(request.body, validOrgId) match {
+    SFParser.parseOutboundMessage(request.body, sfOrganisationId.get) match {
       case \/-(MembershipDeletion(userId)) =>
         metrics.put("Delete", 1)
         attributeService.delete(userId).map(const(ack))
