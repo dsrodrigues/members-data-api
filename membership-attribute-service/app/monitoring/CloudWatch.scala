@@ -1,6 +1,6 @@
 package monitoring
 
-import java.util.concurrent.Future
+import java.util.concurrent.{ExecutorService, Executors, Future}
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.amazonaws.handlers.AsyncHandler
@@ -13,7 +13,8 @@ import play.Logger
 class CloudWatch(region: Region,
                  stage: String,
                  application: String,
-                 service: String) {
+                 service: String,
+                 executorService: ExecutorService) {
 
   lazy val  mandatoryDimensions = Seq(
     new Dimension().withName("Stage").withValue(stage),
@@ -55,5 +56,7 @@ object LoggingAsyncHandler extends AsyncHandler[PutMetricDataRequest, Void] {
 }
 
 object CloudWatch {
-  def apply(service: String) = new CloudWatch(Region.getRegion(Config.AWS.region), Config.stage, Config.applicationName, service)
+  lazy val executorService = Executors.newFixedThreadPool(4) // previous default was 50 (x 2 instantiations)
+
+  def apply(service: String) = new CloudWatch(Region.getRegion(Config.AWS.region), Config.stage, Config.applicationName, service, executorService)
 }
