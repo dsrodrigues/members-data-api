@@ -3,7 +3,7 @@ package controllers
 import actions.BackendFromSalesforceAction
 import com.gu.memsub.Membership
 import com.typesafe.scalalogging.LazyLogging
-import components.NormalTouchpointComponents
+import components.{TestTouchpointComponents, NormalTouchpointComponents}
 import models.ApiErrors
 import monitoring.CloudWatch
 import parsers.Salesforce.{MembershipDeletion, MembershipUpdate, OrgIdMatchingError, ParsingError}
@@ -13,6 +13,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.BodyParsers.parse
 import play.api.mvc.Result
 import play.api.mvc.Results.Ok
+import services.IdentityService
 import scalaz.std.scalaFuture._
 
 import scala.Function.const
@@ -44,8 +45,8 @@ class SalesforceHookController extends LazyLogging {
       case \/-(MembershipUpdate(attrs)) =>
 
         (for {
-          sf <- OptionT(NormalTouchpointComponents.contactRepo.get(attrs.userId))
-          z <- OptionT(NormalTouchpointComponents.membershipSubscriptionService.get(sf))
+          sf <- OptionT(request.touchpoint.contactRepo.get(attrs.userId))
+          z <- OptionT(request.touchpoint.membershipSubscriptionService.get(sf))
           res <- OptionT(attributeService.set(attrs.copy(tier = z.plan.tier.name)).map[Option[Result]](_ => Some(ack)))
           _ = metrics.put("Update", 1)
         } yield res).run.map(_.getOrElse(ApiErrors.badRequest("No")))
