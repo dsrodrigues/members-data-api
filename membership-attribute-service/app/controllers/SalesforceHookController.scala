@@ -1,6 +1,9 @@
 package controllers
 
 import actions.BackendFromSalesforceAction
+import com.gu.memsub.Membership
+import com.typesafe.scalalogging.LazyLogging
+import components.NormalTouchpointComponents
 import models.ApiErrors
 import monitoring.CloudWatch
 import parsers.Salesforce.{MembershipDeletion, MembershipUpdate, OrgIdMatchingError, ParsingError}
@@ -8,13 +11,15 @@ import parsers.{Salesforce => SFParser}
 import play.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.BodyParsers.parse
+import play.api.mvc.Result
 import play.api.mvc.Results.Ok
+import scalaz.std.scalaFuture._
 
 import scala.Function.const
 import scala.concurrent.Future
-import scalaz.{-\/, \/-}
+import scalaz.{OptionT, -\/, \/-}
 
-class SalesforceHookController {
+class SalesforceHookController extends LazyLogging {
   val metrics = CloudWatch("SalesforceHookController")
 
   private val ack = Ok(
@@ -30,14 +35,21 @@ class SalesforceHookController {
   def createAttributes = BackendFromSalesforceAction.async(parse.xml) { request =>
     val validOrgId = request.touchpoint.sfOrganisationId
     val attributeService = request.touchpoint.attrService
+    implicit val pf = Membership
 
     SFParser.parseOutboundMessage(request.body, validOrgId) match {
       case \/-(MembershipDeletion(userId)) =>
         metrics.put("Delete", 1)
         attributeService.delete(userId).map(const(ack))
       case \/-(MembershipUpdate(attrs)) =>
-        metrics.put("Update", 1)
-        attributeService.set(attrs).map(const(ack))
+
+        (for {
+          sf <- OptionT(NormalTouchpointComponents.contactRepo.get(attrs.userId))
+          z <- OptionT(NormalTouchpointComponents.membershipSubscriptionService.get(sf))
+          res <- OptionT(attributeService.set(attrs.copy(tier = z.plan.tier.name)).map[Option[Result]](_ => Some(ack)))
+          _ = metrics.put("Update", 1)
+        } yield res).run.map(_.getOrElse(ApiErrors.badRequest("No")))
+
       case -\/(ParsingError(msg)) =>
         Logger.error(s"Could not parse payload ${request.body}:\n$msg")
         Future(ApiErrors.badRequest(msg))
