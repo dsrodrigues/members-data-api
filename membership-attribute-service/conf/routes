@@ -1,23 +1,25 @@
 # Healthcheck
-GET        /healthcheck                                     controllers.HealthCheckController.healthCheck
+GET            /healthcheck                                       controllers.HealthCheckController.healthCheck
 
-GET        /user-attributes/me/membership                   controllers.AttributeController.membership
-GET        /user-attributes/me/features                     controllers.AttributeController.features
-POST       /user-attributes/me/update                       controllers.AttributeController.update
+GET            /user-attributes/me/membership                     controllers.AttributeController.membership
+GET            /user-attributes/me/features                       controllers.AttributeController.features
+POST           /user-attributes/me/update                         controllers.AttributeController.update
+GET            /user-attributes/me/adfree/start                   controllers.AttributeController.enableAdFree
+GET            /user-attributes/me/adfree/stop                    controllers.AttributeController.disableAdFree
 
-GET        /user-attributes/me/mma-digitalpack              controllers.AccountController.digitalPackDetails
-GET        /user-attributes/me/mma-membership               controllers.AccountController.membershipDetails
+GET            /user-attributes/me/mma-digitalpack                controllers.AccountController.digitalPackDetails
+GET            /user-attributes/me/mma-membership                 controllers.AccountController.membershipDetails
 
-POST       /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
-OPTIONS    /user-attributes/me/membership-update-card       controllers.AccountController.membershipUpdateCard
+POST           /user-attributes/me/membership-update-card         controllers.AccountController.membershipUpdateCard
+OPTIONS        /user-attributes/me/membership-update-card         controllers.AccountController.membershipUpdateCard
 
-POST       /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
-OPTIONS    /user-attributes/me/digitalpack-update-card      controllers.AccountController.digitalPackUpdateCard
+POST           /user-attributes/me/digitalpack-update-card        controllers.AccountController.digitalPackUpdateCard
+OPTIONS        /user-attributes/me/digitalpack-update-card        controllers.AccountController.digitalPackUpdateCard
 
-POST       /salesforce-hook                                 controllers.SalesforceHookController.createAttributes
-POST       /stripe-hook                                     controllers.StripeHookController.updatePrefs
-POST       /stripe-hook-sns                                 controllers.StripeHookController.publishToSns
+POST           /salesforce-hook                                   controllers.SalesforceHookController.createAttributes
+POST           /stripe-hook                                       controllers.StripeHookController.updatePrefs
+POST           /stripe-hook-sns                                   controllers.StripeHookController.publishToSns
 
-GET        /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])
-OPTIONS    /tailor/me                                       controllers.FriendlyTailor.lookup(tag: Seq[String])
+GET            /tailor/me                                         controllers.FriendlyTailor.lookup(tag: Seq[String])
+OPTIONS        /tailor/me                                         controllers.FriendlyTailor.lookup(tag: Seq[String])
 

@@ -20,7 +20,6 @@ import scalaz.{EitherT, \/}
 import scalaz.std.scalaFuture._
 import scalaz.syntax.std.option._
 
-
 class AttributeController extends Controller with LazyLogging {
 
   lazy val corsFilter = CORSActionBuilder(Config.corsConfig)
@@ -34,7 +33,8 @@ class AttributeController extends Controller with LazyLogging {
       id <- EitherT(Future.successful(authenticationService.userId \/> "No user"))
       contact <- EitherT(request.touchpoint.contactRepo.get(id).map(_ \/> s"No contact for $id"))
       sub <- EitherT(request.touchpoint.subService.current[SubscriptionPlan.Member](contact).map(_.headOption \/> s"No sub for $id"))
-      attributes = Attributes(id, sub.plan.charges.benefit.id, contact.regNumber)
+      existingAttrs <- EitherT(request.touchpoint.attrService.get(id).map(_ \/> s"No existing attributes for $id"))
+      attributes = Attributes(id, sub.plan.charges.benefit.id, contact.regNumber, AdFree = existingAttrs.AdFree)
       res <- EitherT(request.touchpoint.attrService.set(attributes).map(\/.right))
     } yield attributes
 
@@ -48,6 +48,31 @@ class AttributeController extends Controller with LazyLogging {
         Ok(Json.obj("updated" -> true))
       }
     ))
+  }
+
+  def enableAdFree = adFree(true)
+  def disableAdFree = adFree(false)
+
+  private def adFree(isAdFree: Boolean) = BackendFromCookieAction.async { implicit request =>
+    def writeNewAttrs(attrs: Attributes) = {
+      request.touchpoint.attrService.set(attrs)
+      attrs
+    }
+    authenticationService.userId(request).map[Future[Result]] { id =>
+      request.touchpoint.attrService.get(id).map {
+        case Some(attrs) =>
+          if(attrs.isAdFree != isAdFree) {
+            writeNewAttrs(attrs.copy(AdFree = Some(isAdFree)))
+          } else {
+            attrs
+          }
+        case None =>
+          writeNewAttrs(Attributes(id, "AdFreeTrial", MembershipNumber=Some("0"), PublicTier=None, AdFree=Some(isAdFree)))
+      }
+    }.getOrElse {
+      metrics.put(s"ad-free-cookie-auth-failed", 1)
+      Future(unauthorized)
+    }
   }
 
   private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Option[Result] = None) = backendAction.async { request =>
