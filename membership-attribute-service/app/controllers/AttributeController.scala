@@ -54,25 +54,23 @@ class AttributeController extends Controller with LazyLogging {
   def disableAdFree = adFree(false)
 
   private def adFree(isAdFree: Boolean) = BackendFromCookieAction.async { implicit request =>
-    def writeNewAttrs(attrs: Attributes) = {
-      request.touchpoint.attrService.set(attrs)
-      attrs
-    }
-    authenticationService.userId(request).map[Future[Result]] { id =>
-      request.touchpoint.attrService.get(id).map {
-        case Some(attrs) =>
-          if(attrs.isAdFree != isAdFree) {
-            writeNewAttrs(attrs.copy(AdFree = Some(isAdFree)))
-          } else {
-            attrs
-          }
-        case None =>
-          writeNewAttrs(Attributes(id, "AdFreeTrial", MembershipNumber=Some("0"), PublicTier=None, AdFree=Some(isAdFree)))
+    val result: EitherT[Future, String, Attributes] = for {
+      id <- EitherT(Future.successful(authenticationService.userId \/> "No user"))
+      existingAttrs <- EitherT(request.touchpoint.attrService.get(id).map(_ \/> s"No existing attributes for $id"))
+      newAttrs = if (existingAttrs.AdFree.getOrElse(false) != isAdFree) existingAttrs.copy(AdFree = Some(isAdFree)) else existingAttrs
+      res <- EitherT(request.touchpoint.attrService.set(newAttrs).map(\/.right))
+    } yield newAttrs
+
+    result.run.map(_.fold(
+      error => {
+        logger.error(s"Failed to change ad-free state - $error")
+        ApiErrors.badRequest(error)
+      },
+      attributes => {
+        logger.info(s"${attributes.UserId} -> ${attributes.Tier} -> ad-free: ${attributes.isAdFree}")
+        Ok(Json.obj("updated" -> true))
       }
-    }.getOrElse {
-      metrics.put(s"ad-free-cookie-auth-failed", 1)
-      Future(unauthorized)
-    }
+    ))
   }
 
   private def lookup(endpointDescription: String, onSuccess: Attributes => Result, onNotFound: Option[Result] = None) = backendAction.async { request =>
