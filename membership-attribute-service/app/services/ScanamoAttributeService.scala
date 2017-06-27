@@ -42,6 +42,7 @@ class ScanamoAttributeService(client: AmazonDynamoDBAsyncClient, table: String)
   override def set(attributes: Attributes): Future[PutItemResult] = run(scanamo.put(attributes))
 
   override def update(attributes: Attributes): Future[Either[DynamoReadError, Attributes]] = {
+    logger.info(s"attributes are $attributes")
 
     def scanamoSetOpt[T: DynamoFormat](field: (Symbol, Option[T])): Option[UpdateExpression] = field._2.map(scanamoSet(field._1, _))
 

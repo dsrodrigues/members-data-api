@@ -1,10 +1,14 @@
 package controllers
 import _root_.services.{AuthenticationService, IdentityAuthService}
 import actions._
+import com.gu.memsub.Subscription.Name
+import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
 import com.gu.memsub.subsv2.reads.SubPlanReads._
+import com.gu.memsub.subsv2.services.SubscriptionService
 import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.typesafe.scalalogging.LazyLogging
+import components.TouchpointComponents
 import configuration.Config
 import configuration.Config.authentication
 import models.ApiError._
@@ -77,13 +81,12 @@ class AttributeController extends Controller with LazyLogging {
   def attributes = lookup("attributes", onSuccessMember = identity[Attributes], onSuccessMemberAndOrContributor = identity[Attributes], onNotFound = notFound)
   def features = lookup("features", onSuccessMember = Features.fromAttributes, onSuccessMemberAndOrContributor = _ => Features.unauthenticated, onNotFound = Features.unauthenticated)
 
-
   def updateAttributes(identityId : String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
 
     val tp = request.touchpoint
 
     val result: EitherT[Future, String, Attributes] =
-      // TODO - add the Stripe lookups for the Contribution and Membership cards to this flow, then we can deprecate the Salesforce hook.
+    // TODO - add the Stripe lookups for the Contribution and Membership cards to this flow, then we can deprecate the Salesforce hook.
       for {
         contact <- EitherT(tp.contactRepo.get(identityId).map(_ \/> s"No contact for $identityId"))
         memSubF = EitherT[Future, String, Option[Subscription[SubscriptionPlan.Member]]](tp.subService.current[SubscriptionPlan.Member](contact).map(a => \/.right(a.headOption)))
@@ -112,4 +115,38 @@ class AttributeController extends Controller with LazyLogging {
       }
     )
   }
+
+  def updateAttributesForMembership(subscriptionName: String): Action[AnyContent] = backendForSyncWithZuora.async { implicit request =>
+
+    implicit val tp = request.touchpoint
+
+    val result: EitherT[Future, String, Attributes] =
+      for {
+        sub <- EitherT[Future, String, Option[Subscription[SubscriptionPlan.PaidMember]]](tp.subService.get[SubscriptionPlan.PaidMember](Name(subscriptionName)).map(a => \/.right(a.headOption)))
+        account <- EitherT(tp.zuoraRestService.getAccount(sub.get.accountId))
+        _ <- EitherT(Future.successful(if (sub.isEmpty) \/.left("No recurring relationship") else \/.right(())))
+          attributes = Attributes(
+            UserId = account.identityId.get, //todo: GET
+            Tier = Some(sub.get.plan.charges.benefits.head.id), //todo: head
+            MembershipNumber = None,
+            MembershipJoinDate = Some(sub.get.startDate)
+          )
+
+        res <- EitherT(tp.attrService.update(attributes).map(\/.right)) //todo: GET
+      } yield attributes
+
+    result.fold(
+      {  error =>
+        logger.error(s"Failed to update attributes - $error")
+        ApiErrors.badRequest(error)
+      },
+      { attributes =>
+        logger.info(s"${attributes.UserId} -> ${attributes.Tier} || ${attributes.RecurringContributionPaymentPlan}")
+        Ok(Json.obj("updated" -> true))
+      }
+    )
+  }
+
+
+
 }

@@ -22,8 +22,8 @@ POST       /salesforce-hook                                 controllers.Salesfor
 POST       /stripe-hook                                     controllers.StripeHookController.updatePrefs
 POST       /stripe-hook-sns                                 controllers.StripeHookController.publishToSns
 
-# Contributions endpoints
 PUT       /user-attributes/:identityId                      controllers.AttributeController.updateAttributes(identityId : String)
+PUT       /sub-attributes/:subscriptionId                   controllers.AttributeController.updateAttributesForMembership(subscriptionId : String)
 #The endpoint below will replace /user-attributes/me/membership in the long term
 GET        /user-attributes/me                              controllers.AttributeController.attributes
 
