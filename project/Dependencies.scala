@@ -1,5 +1,6 @@
 import sbt._
 import play.sbt.PlayImport
+import play.sbt.PlayImport.jdbc
 
 object Dependencies {
 
@@ -25,11 +26,13 @@ object Dependencies {
   val kinesis = "com.gu" % "kinesis-logback-appender" % "1.4.0"
   val logstash = "net.logstash.logback" % "logstash-logback-encoder" % "4.9"
   val jacksonCbor = "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % "2.8.7"
+  val anorm = "com.typesafe.play" %% "anorm" % "2.5.2"
+  val postgresql = "org.postgresql" % "postgresql" % "9.4.1209"
 
   //projects
 
   val apiDependencies = Seq(sentryRavenLogback, identityCookie, identityPlayAuth, identityTestUsers, scalaUri,
     playWS, playCache, playFilters, scanamo, awsWrap, awsDynamo, awsSNS, awsCloudWatch, scalaz, membershipCommon,
-    specs2, kinesis, logstash, jacksonCbor)
+    specs2, kinesis, logstash, jacksonCbor, postgresql, anorm, jdbc)
 
 }

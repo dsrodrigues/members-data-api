@@ -1,5 +1,8 @@
 package controllers
+import javax.inject.Inject
+
 import actions._
+import anorm.{SQL, _}
 import com.gu.memsub.Subscription.AccountId
 import com.gu.memsub.subsv2.SubscriptionPlan.AnyPlan
 import com.gu.memsub.subsv2.reads.ChargeListReads._
@@ -9,36 +12,34 @@ import com.gu.memsub.subsv2.{Subscription, SubscriptionPlan}
 import com.gu.scanamo.error.DynamoReadError
 import com.gu.zuora.ZuoraRestService
 import com.gu.zuora.ZuoraRestService.QueryResponse
-import loghandling.ZuoraRequestCounter
 import configuration.Config
 import configuration.Config.authentication
 import loghandling.LoggingField.LogField
-import loghandling.LoggingWithLogstashFields
+import loghandling.{LoggingWithLogstashFields, ZuoraRequestCounter}
 import models.ApiError._
 import models.ApiErrors._
 import models.Features._
-import models._
+import models.{ApiErrors, _}
 import monitoring.Metrics
 import org.joda.time.LocalDate
+import play.api.db.Database
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.filters.cors.CORSActionBuilder
+import prodtest.Allocator._
 import services.{AttributeService, AttributesMaker, AuthenticationService, IdentityAuthService}
 
 import scala.concurrent.Future
+import scala.util.Try
+import scalaz.std.list._
 import scalaz.std.scalaFuture._
-import scalaz.syntax.std.option._
-import prodtest.Allocator._
-
-import scalaz.{-\/, Disjunction, EitherT, \/, \/-}
 import scalaz.syntax.std.either._
-import scalaz._
-import std.list._
-import syntax.traverse._
+import scalaz.syntax.std.option._
+import scalaz.syntax.traverse._
+import scalaz.{-\/, Disjunction, EitherT, \/, \/-}
 
-
-class AttributeController extends Controller with LoggingWithLogstashFields {
+class AttributeController @Inject()(implicit db: Database) extends Controller with LoggingWithLogstashFields {
 
   val keys = authentication.keys.map(key => s"Bearer $key")
 
@@ -56,6 +57,7 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
   lazy val backendForSyncWithZuora = NoCacheAction andThen apiKeyFilter andThen WithBackendFromUserIdAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
+  lazy val rp: RowParser[String] = SqlParser.str("last_contribution_date")
 
   private def lookup(endpointDescription: String, onSuccessMember: Attributes => Result, onSuccessMemberAndOrContributor: Attributes => Result, onNotFound: Result, endpointEligibleForTest: Boolean) =
   {
@@ -69,22 +71,42 @@ class AttributeController extends Controller with LoggingWithLogstashFields {
       } else ("Dynamo", request.touchpoint.attrService.get(identityId))
     }
 
+    def pickContribution(identityId: String): Option[LocalDate] = {
+      val result = SQL("SELECT * FROM all_contributions").asTry(rp.*)(db.getConnection())
+
+      val maybeSelected = result recover { case e: Throwable =>
+        log.warn(s"Failed to lookup last contribution date for Identity ID: $identityId. Reason: ${e.getMessage}")
+        List.empty
+      } getOrElse List.empty headOption
+
+      val maybeParsed = Try(maybeSelected.map(LocalDate.parse)) recover { case e: Throwable =>
+        log.warn(s"Failed to parse last contribution date: ${maybeSelected.mkString} for Identity ID: $identityId. Reason: ${e.getMessage}")
+        None
+      }
+
+      maybeParsed.toOption.flatten
+    }
+
     backendAction.async { implicit request =>
       authenticationService.userId(request) match {
         case Some(identityId) =>
           val (fromWhere, attributes) = pickAttributes(identityId)
           attributes.map {
-            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _)) =>
+            case Some(attrs @ Attributes(_, Some(tier), _, _, _, _, _, _)) =>
               log.info(s"$identityId is a member - $endpointDescription - $attrs found via $fromWhere")
               onSuccessMember(attrs).withHeaders(
                 "X-Gu-Membership-Tier" -> tier,
                 "X-Gu-Membership-Is-Paid-Tier" -> attrs.isPaidTier.toString
               )
             case Some(attrs) =>
-              log.info(s"$identityId is a contributor - $endpointDescription - $attrs found via $fromWhere")
-              onSuccessMemberAndOrContributor(attrs)
+              log.info(s"$identityId is a subscriber or contributor - $endpointDescription - $attrs")
+              onSuccessMemberAndOrContributor(attrs.copy(LastContributionDate = pickContribution(identityId)))
             case _ =>
-              onNotFound
+              pickContribution(identityId) map { lcd =>
+                val attrs = Attributes(UserId = identityId, LastContributionDate = Some(lcd))
+                log.info(s"$identityId is a contributor - $endpointDescription - $attrs")
+                onSuccessMemberAndOrContributor(attrs)
+              } getOrElse onNotFound
           }
         case None =>
           metrics.put(s"$endpointDescription-cookie-auth-failed", 1)
