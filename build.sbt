@@ -43,10 +43,8 @@ lazy val dynamoDBLocalSettings = Seq(
   testOptions in Test += (dynamoDBLocalTestCleanup).value
 )
 
-import com.typesafe.sbt.packager.archetypes.ServerLoader.Systemd
 
 val buildDebSettings = Seq(
-  serverLoading in Debian := Systemd,
   debianPackageDependencies := Seq("openjdk-8-jre-headless"),
   maintainer := "Membership Dev <membership.dev@theguardian.com>",
   packageSummary := "Members Data API",
@@ -82,3 +80,4 @@ val api = app("membership-attribute-service")
   )
 
 val root = project.in(file(".")).aggregate(api)
+
