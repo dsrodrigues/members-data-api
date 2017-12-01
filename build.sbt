@@ -42,9 +42,9 @@ lazy val dynamoDBLocalSettings = Seq(
   testOnly in Test := ((testOnly in Test).dependsOn(startDynamoDBLocal)).evaluated,
   testOptions in Test += (dynamoDBLocalTestCleanup).value
 )
-
-
+import com.typesafe.sbt.packager.archetypes.systemloader.ServerLoader.Systemd
 val buildDebSettings = Seq(
+  serverLoading in Debian := Some(Systemd),
   debianPackageDependencies := Seq("openjdk-8-jre-headless"),
   maintainer := "Membership Dev <membership.dev@theguardian.com>",
   packageSummary := "Members Data API",
