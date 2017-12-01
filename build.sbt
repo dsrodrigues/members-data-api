@@ -21,7 +21,7 @@ def buildInfoSettings = Seq(
 val commonSettings = Seq(
   organization := "com.gu",
   version := appVersion,
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.11.12",
   resolvers ++= Seq(
     "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
     "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-snapshots",
@@ -81,3 +81,4 @@ val api = app("membership-attribute-service")
 
 val root = project.in(file(".")).aggregate(api)
 
+scalaVersion := "2.11.12"
