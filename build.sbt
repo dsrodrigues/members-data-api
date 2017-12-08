@@ -1,4 +1,5 @@
 import Dependencies._
+import com.typesafe.sbt.packager.archetypes.systemloader.SystemdPlugin
 
 val appVersion = "1.0-SNAPSHOT"
 name := "members-data-api"
@@ -64,7 +65,7 @@ val buildDebSettings = Seq(
 )
 
 def lib(name: String) = Project(name, file(name))
-  .enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging).settings(commonSettings)
+  .enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact, JDebPackaging,SystemdPlugin).settings(commonSettings)
 
 def app(name: String) = lib(name)
   .settings(dynamoDBLocalSettings)
