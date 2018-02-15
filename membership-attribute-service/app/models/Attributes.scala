@@ -40,6 +40,7 @@ case class Attributes(
   lazy val isAdFree = AdFree.exists(identity)
 
   lazy val contentAccess = ContentAccess(member = isPaidTier || isFriendTier, paidMember = isPaidTier, recurringContributor = isContributor, digitalPack = digitalSubscriberHasActivePlan)
+  lazy val alertAvailableFor = Some("membership")
 }
 
 case class ZuoraAttributes(
@@ -91,6 +92,7 @@ object Attributes {
   )(unlift(Attributes.unapply))
     .addNullableField("digitalSubscriptionExpiryDate", _.latestDigitalSubscriptionExpiryDate)
     .addField("contentAccess", _.contentAccess)
+    .addNullableField("alertAvailableFor", _.alertAvailableFor)
 
   implicit def toResult(attrs: Attributes): Result =
     Ok(Json.toJson(attrs))

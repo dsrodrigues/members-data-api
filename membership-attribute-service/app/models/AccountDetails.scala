@@ -12,7 +12,8 @@ object AccountDetails {
       val contact = details._1
       val paymentDetails = details._2
       val stripePublicKey = details._3
-      Ok(memberDetails(contact, paymentDetails) ++ toJson(paymentDetails, stripePublicKey))
+      val alertText = "Capitalize on low hanging fruit to identify a ballpark value added activity to beta test. Override the digital divide with additional clickthroughs from DevOps."
+      Ok(memberDetails(contact, paymentDetails) ++ toJson(paymentDetails, stripePublicKey) ++ Json.obj("alertText" -> alertText))
     }
 
     private def memberDetails(contact: Contact, paymentDetails: PaymentDetails) =
