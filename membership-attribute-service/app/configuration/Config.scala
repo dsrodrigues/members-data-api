@@ -9,9 +9,8 @@ import com.gu.aws.CredentialsProvider
 import com.gu.identity.cookie.{PreProductionKeys, ProductionKeys}
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
-import play.api.Configuration
-import play.filters.cors.CORSConfig
-import play.filters.cors.CORSConfig.Origins
+import scala.collection.JavaConversions._
+
 
 import scala.util.Try
 
@@ -42,25 +41,8 @@ object Config {
   val defaultTouchpointBackendStage = config.getString("touchpoint.backend.default")
   val testTouchpointBackendStage = config.getString("touchpoint.backend.test")
 
-  private def getAllowedOrigins(configLabel: String ) = Origins.Matching( str => config.getStringList(configLabel).contains(str) )
-
-  val CORSAllowedOrigins  = getAllowedOrigins(("play.filters.cors.allowedOrigins"))
-  val mmaCORSAllowedOrigins = getAllowedOrigins("mma.cors.allowedOrigins")
-//  val corsConfig = CORSConfig.fromConfiguration(Configuration(config))
-//
-//  val mmaCorsConfig = CORSConfig.denyAll.copy(
-//    allowedOrigins = Origins.Matching( str =>
-//      config.getStringList("mma.cors.allowedOrigins").contains(str)
-//    )
-//  )
-//
-//
-//  lazy val mmaUpdateCorsConfig = Config.mmaCorsConfig.copy(
-//    isHttpHeaderAllowed = Seq("accept", "content-type", "csrf-token", "origin").contains(_),
-//    isHttpMethodAllowed = Seq("POST","OPTIONS").contains(_),
-//    supportsCredentials = true
-//  )
-
+  val CORSAllowedOrigins: List[String]  = config.getStringList("default.cors.allowedOrigins").toList
+  val mmaCORSAllowedOrigins: List[String]  = config.getStringList("mma.cors.allowedOrigins").toList
   val abandonedCartEmailQueue = config.getString("abandoned.cart.email.queue")
 
   object Logstash {

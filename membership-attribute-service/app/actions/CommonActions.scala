@@ -25,7 +25,7 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
   }
 
   //TODO JUST A HACK TO SEE IF IT WORKS!!
-  def CORSFilter(allowedOrigins: Origins) = // CORSActionBuilder(corsConfig, DefaultHttpErrorHandler, ParserConfiguration() , SingletonTemporaryFileCreator)
+  def CORSFilter(allowedOrigins: List[String]) = // CORSActionBuilder(corsConfig, DefaultHttpErrorHandler, ParserConfiguration() , SingletonTemporaryFileCreator)
 
    new ActionBuilder[Request, AnyContent] {
 
@@ -34,7 +34,7 @@ class CommonActions(touchpointBackends: TouchpointBackends, bodyParser: BodyPars
     override protected  def executionContext: ExecutionContext = ex
     def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]) = {
       block(request).map { result =>
-        (for (originHeader <- request.headers.get(ORIGIN) if allowedOrigins(originHeader)) yield {
+        (for (originHeader <- request.headers.get(ORIGIN) if allowedOrigins.contains(originHeader)) yield {
           result.withHeaders(
             ACCESS_CONTROL_ALLOW_ORIGIN -> originHeader,
             ACCESS_CONTROL_ALLOW_CREDENTIALS -> "true")
