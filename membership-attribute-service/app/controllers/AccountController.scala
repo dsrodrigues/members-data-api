@@ -32,10 +32,12 @@ import scalaz.{-\/, EitherT, OptionT, \/, \/-, _}
 class AccountController(commonActions: CommonActions) extends Controller with LazyLogging {
   import commonActions._
   lazy val authenticationService: AuthenticationService = IdentityAuthService
-  lazy val corsMmaUpdateFilter = CORSFilter(Config.mmaUpdateCorsConfig)
-  lazy val mmaCorsFilter = CORSFilter(Config.mmaCorsConfig)
+  //TODO SEE WHAT ADITIONAL CONFIG THE MMAUPDATE FILTER SHOULD HAVE!!
+  lazy val corsMmaUpdateFilter = CORSFilter(Config.mmaCORSAllowedOrigins)
+  lazy val mmaCorsFilter = CORSFilter(Config.mmaCORSAllowedOrigins)
   lazy val mmaAction = NoCacheAction andThen mmaCorsFilter andThen BackendFromCookieAction
   lazy val mmaUpdateAction = NoCacheAction andThen corsMmaUpdateFilter andThen BackendFromCookieAction
+  lazy val bla = NoCacheAction andThen corsMmaUpdateFilter
 
   def cancelSubscription [P <: SubscriptionPlan.AnyPlan : SubPlanReads] = mmaUpdateAction.async { implicit request =>
 

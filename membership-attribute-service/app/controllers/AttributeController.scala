@@ -21,7 +21,7 @@ import services.AttributesFromZuora._
 class AttributeController(commonActions: CommonActions) extends Controller with LoggingWithLogstashFields {
 
   import commonActions._
-  lazy val corsFilter = CORSFilter(Config.corsConfig)
+  lazy val corsFilter = CORSFilter(Config.CORSAllowedOrigins)
   lazy val backendAction = NoCacheAction andThen corsFilter andThen BackendFromCookieAction
   lazy val authenticationService: AuthenticationService = IdentityAuthService
   lazy val metrics = Metrics("AttributesController")
