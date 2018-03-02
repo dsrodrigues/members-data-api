@@ -13,26 +13,6 @@ Parameters:
     - t2.micro
     - t2.small
     - t2.medium
-    - m3.medium
-    - m3.large
-    - m3.xlarge
-    - m3.2xlarge
-    - c3.large
-    - c3.xlarge
-    - c3.2xlarge
-    - c3.4xlarge
-    - c3.8xlarge
-    - g2.2xlarge
-    - r3.large
-    - r3.xlarge
-    - r3.2xlarge
-    - r3.4xlarge
-    - r3.8xlarge
-    - i2.xlarge
-    - i2.2xlarge
-    - i2.4xlarge
-    - i2.8xlarge
-    - hs1.8xlarge
     ConstraintDescription: must be a valid EC2 instance type.
   MaxInstances:
     Description: Maximum number of instances. This should be (at least) double the
@@ -66,6 +46,10 @@ Parameters:
   ELBSSLCertificate:
     Description: ELB SSL Certificate ARN
     Type: String
+  ELBAccessibleFromCIDR:
+    Description: The CIDR range where the ELB is accessible from. Use 77.91.248.0/21 for GNM Office/VPN or 0.0.0.0/0 for the Internet.
+    Type: String
+    Default: 77.91.248.0/21
 Mappings:
   StageVariables:
     PROD:
@@ -309,7 +293,7 @@ Resources:
       - IpProtocol: tcp
         FromPort: '443'
         ToPort: '443'
-        CidrIp: 0.0.0.0/0
+        CidrIp: !Ref ELBAccessibleFromCIDR
       SecurityGroupEgress:
       - IpProtocol: tcp
         FromPort: '9000'
