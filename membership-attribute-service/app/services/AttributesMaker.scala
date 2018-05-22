@@ -116,7 +116,7 @@ class AttributesMaker extends LoggingWithLogstashFields{
           MembershipJoinDate = zuora.MembershipJoinDate,
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = dynamo.MembershipNumber,
-          AdFree = Some(isStaffOrDigitalSubscriber(zuora)),
+          AdFree = Some(isStaffTier(zuora)),
           AlertAvailableFor = zuora.AlertAvailableFor
         ))
       case (Some(zuora), None) =>
@@ -127,16 +127,15 @@ class AttributesMaker extends LoggingWithLogstashFields{
           MembershipJoinDate = zuora.MembershipJoinDate,
           DigitalSubscriptionExpiryDate = zuora.DigitalSubscriptionExpiryDate,
           MembershipNumber = None,
-          AdFree = Some(isStaffOrDigitalSubscriber(zuora)),
+          AdFree = Some(isStaffTier(zuora)),
           AlertAvailableFor = zuora.AlertAvailableFor
         ))
       case (None, _) => None
     }
   }
 
-  private def isStaffOrDigitalSubscriber(zuora: ZuoraAttributes): Boolean =
-    zuora.Tier.exists(_.toLowerCase() == "staff") ||
-      zuora.DigitalSubscriptionExpiryDate.nonEmpty
+  private def isStaffTier(zuora: ZuoraAttributes): Boolean =
+    zuora.Tier.exists(_.toLowerCase() == "staff")
 
 }
 
