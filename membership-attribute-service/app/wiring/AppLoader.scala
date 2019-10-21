@@ -7,7 +7,7 @@ import configuration.Config
 import controllers._
 import filters.{AddEC2InstanceHeader, AddGuIdentityHeaders, CheckCacheHeadersFilter}
 import loghandling.Logstash
-import monitoring.{ErrorHandler, SentryLogging}
+import monitoring.ErrorHandler
 import play.api.ApplicationLoader.Context
 import play.api.{db, _}
 import play.api.db.{ConnectionPool, DBComponents, HikariCPComponents}
@@ -27,7 +27,6 @@ class AppLoader extends ApplicationLoader
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
     }
-    SentryLogging.init()
     Logstash.init(Config)
     new MyComponents(context).application
   }
