@@ -36,7 +36,6 @@
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>
-        <appender-ref ref="Sentry" />
     </root>
 
 </configuration>

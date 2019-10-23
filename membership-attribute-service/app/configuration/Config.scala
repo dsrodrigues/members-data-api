@@ -4,7 +4,6 @@ import java.time.Duration
 
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.sqs.AmazonSQSAsyncClientBuilder
-import io.sentry.dsn.Dsn
 import com.gu.aws.CredentialsProvider
 import com.gu.identity.testing.usernames.{Encoder, TestUsernames}
 import com.typesafe.config.ConfigFactory
@@ -21,7 +20,6 @@ object Config {
   val stage = config.getString("stage")
 
   val useFixtures = config.getBoolean("use-fixtures")
-  lazy val sentryDsn = Try(config.getString("sentry.dsn")).toOption
 
   object AWS {
     val region = Regions.EU_WEST_1
